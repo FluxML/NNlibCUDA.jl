@@ -2,7 +2,7 @@ using NNlib: DenseConvDims, DepthwiseConvDims
 import NNlib: conv!, ∇conv_filter!, ∇conv_data!, conv_bias_act!
 import NNlib: depthwise_conv!, ∇depthwise_conv_filter!, ∇depthwise_conv_data!
 
-using CUDA.CUDNN: scalingParameter, CUDNN_CONVOLUTION, convdims, 
+using CUDA.CUDNN: scalingParameter, CUDNN_CONVOLUTION, convdims,
                   cudnnConvolutionDescriptor, cudnnConvolutionBwdDataAlgoPerf,
                   cudnnConvolutionForward!, cudnnConvolutionBwdFilterAlgoPerf,
                   cudnnConvolutionBackwardData, cudnnConvolutionBackwardFilter,
@@ -19,7 +19,7 @@ function cudnnConvolutionDescriptor(cdims::ConvDims, x::DenseCuArray{T}) where T
                                cudnnDataType(T),
                                math_mode(),
                                CUDNN_DEFAULT_REORDER,
-                               Cint(1))
+                               Cint(NNlib.groupcount(cdims)))
 end
 
 function conv!(y::DenseCuArray{T}, x::DenseCuArray{T}, w::DenseCuArray{T}, cdims::ConvDims;
@@ -42,7 +42,7 @@ function conv_bias_act!(y::DenseCuArray{T}, x::DenseCuArray{T}, w::DenseCuArray{
     end
     if algo != -1
         @warn "The algo option has been deprecated, the fastest algo is computed automatically" maxlog=1
-    end    
+    end
     d = cudnnConvolutionDescriptor(cdims, x)
     # only relu and identity are supported by cudnnConvolutionForward!
     activation = (σ == NNlib.relu ? CUDNN_ACTIVATION_RELU : CUDNN_ACTIVATION_IDENTITY)
@@ -60,7 +60,7 @@ function ∇conv_data!(dx::DenseCuArray{T}, dy::DenseCuArray{T}, w::DenseCuArray
     end
     if algo != -1
         @warn "The algo option has been deprecated, the fastest algo is computed automatically" maxlog=1
-    end    
+    end
     alpha, beta = scalingParameter(T,alpha), scalingParameter(T,beta);
     xDesc, yDesc, wDesc = cudnnTensorDescriptor(dx), cudnnTensorDescriptor(dy), cudnnFilterDescriptor(w)
     convDesc = cudnnConvolutionDescriptor(cdims, dx)
@@ -78,7 +78,7 @@ function ∇conv_filter!(dw::DenseCuArray{T}, x::DenseCuArray{T}, dy::DenseCuArr
     end
     if algo != -1
         @warn "The algo option has been deprecated, the fastest algo is computed automatically" maxlog=1
-    end    
+    end
     alpha, beta = scalingParameter(T,alpha), scalingParameter(T,beta);
     xDesc, yDesc, wDesc = cudnnTensorDescriptor(x), cudnnTensorDescriptor(dy), cudnnFilterDescriptor(dw)
     convDesc = cudnnConvolutionDescriptor(cdims, x)
