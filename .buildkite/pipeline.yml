@@ -4,6 +4,8 @@ steps:
       - JuliaCI/julia#v1:
           version: "1.6" 
       - JuliaCI/julia-test#v1: ~
+    env:
+      JULIA_PKG_SERVER: ""
     agents:
       queue: "juliagpu"
       cuda: "*"
@@ -14,6 +16,8 @@ steps:
       - JuliaCI/julia#v1:
           version: "1.7-nightly"
       - JuliaCI/julia-test#v1: ~
+    env:
+      JULIA_PKG_SERVER: ""
     agents:
       queue: "juliagpu"
       cuda: "*"
