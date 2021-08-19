@@ -1,6 +1,5 @@
 steps:
   - label: "GPU integration with julia v1"
-  - command: julia --project -e "import Pkg; Pkg.Registry.update()"
     plugins:
       - JuliaCI/julia#v1:
           version: "1.6"
