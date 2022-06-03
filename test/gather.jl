@@ -17,6 +17,8 @@
     gputest(src -> NNlib.gather(src, index), src, checkgrad=true)
     @test NNlib.gather!(CUDA.zeros(T, size(index)...), src, index) == output
     @test_throws ArgumentError NNlib.gather!(zeros(T, 3, 5), src, index)
+    index[1,:] .= 6
+    @test_throws BoundsError NNlib.gather(src, index)
     
     ## 1d src, 2d index of tuples -> 2d output
     src = CT([3, 4, 5, 6, 7])
