@@ -91,4 +91,14 @@
     @test y isa CuArray{Float32,3}
     @test size(y) == (size(src)[1:Nsrc-M]..., size(index)...) 
     gputest(src -> NNlib.gather(src, index), src, checkgrad=true)
+
+    ## empty 2d src, 2d index of ints -> 3d output
+    src = CT(zeros(Int, 0, 3))
+    index = cu([1 2 3;
+                2 2 1;
+                3 1 3])
+    
+    y = NNlib.gather(src, index)
+    @test y isa CuArray{Float32,3}
+    @test size(y) == (0, size(index)...)
 end
