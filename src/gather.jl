@@ -66,13 +66,15 @@ function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
 
     # check bounds
     chk = checkbounds_src(src, dims, eltype(idx))
-    isempty(src) && return dst
     in_bnd = map(chk, collect(idx))
     if !all(in_bnd)
         j = findfirst(i -> !i, in_bnd)
         k = CUDA.@allowscalar idx[j]
         throw(BoundsError(src, k))
     end
+
+    # empty array input
+    isempty(src) && return dst
 
     # cuda kernel
     args = dst, src, idx, max_idx, max_dims_idx, dims_size
