@@ -49,11 +49,11 @@ function gather_kernel!(dst, src, idx::CUDA.CuDeviceArray{<:CartesianIndex}, max
     return nothing
 end
 
-function checkbounds_src(src, dims::Int, ::Type{<:Any})
+function checkbounds_src(src, dims::Union{Int, Val}, ::Type{<:Any})
     return i -> checkbounds(Bool, src, ntuple(x -> Colon(), dims)..., i...)
 end
 
-function checkbounds_src(src, dims::Int, ::Type{<:CartesianIndex})
+function checkbounds_src(src, dims::Union{Int, Val}, ::Type{<:CartesianIndex})
     return i -> checkbounds(Bool, src, ntuple(x -> Colon(), dims)..., i)
 end
 
@@ -65,10 +65,9 @@ function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
     max_idx = max_dims_idx * length(idx)
 
     # check bounds
-    chk = checkbounds_src(src, dims, eltype(idx))
-    in_bnd = map(chk, collect(idx))
+    in_bnd = map(checkbounds_src(src, Val(dims), eltype(idx)), idx)
     if !all(in_bnd)
-        j = findfirst(i -> !i, in_bnd)
+        j = findfirst(!, in_bnd)
         k = CUDA.@allowscalar idx[j]
         throw(BoundsError(src, k))
     end
