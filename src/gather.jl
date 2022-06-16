@@ -49,13 +49,15 @@ function gather_kernel!(dst, src, idx::CUDA.CuDeviceArray{<:CartesianIndex}, max
     return nothing
 end
 
-function checkbounds_src(src, dims::Union{Int, Val}, ::Type{<:Any})
-    return i -> checkbounds(Bool, src, ntuple(x -> Colon(), dims)..., i...)
+struct BoundInfo{T,D}
+    A::T
+    dims::D
 end
 
-function checkbounds_src(src, dims::Union{Int, Val}, ::Type{<:CartesianIndex})
-    return i -> checkbounds(Bool, src, ntuple(x -> Colon(), dims)..., i)
-end
+Adapt.adapt_structure(to, x::BoundInfo) = BoundInfo(adapt(to, parent(x.A)), x.dims)
+
+(b::BoundInfo)(i) = checkbounds(Bool, b.A, ntuple(x -> Colon(), b.dims)..., i...)
+(b::BoundInfo)(i::CartesianIndex) = checkbounds(Bool, b.A, ntuple(x -> Colon(), b.dims)..., i)
 
 function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
     # check dims
@@ -65,9 +67,9 @@ function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
     max_idx = max_dims_idx * length(idx)
 
     # check bounds
-    in_bnd = map(checkbounds_src(src, Val(dims), eltype(idx)), idx)
-    if !all(in_bnd)
-        j = findfirst(!, in_bnd)
+    in_bnd = mapreduce(BoundInfo(src, Val(dims)), &, idx)
+    if !in_bnd
+        j = findfirst(!, map(BoundInfo(src, Val(dims)), idx))
         k = CUDA.@allowscalar idx[j]
         throw(BoundsError(src, k))
     end
