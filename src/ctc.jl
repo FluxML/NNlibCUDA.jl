@@ -209,7 +209,7 @@ function ctc_alpha(ŷ::CuArray, y)
   T = size(ŷ, 2)
   U′ = 2*length(y) + 1
   alphas = CUDA.fill(log(zero(eltype(ŷ))), U′,T)
-  nRepeats = count_repeats(cpu(y))
+  nRepeats = count_repeats(CUDA.adapt(Array, y))
   nThreads = min(U′, MAX_THREADS)
   @cuda blocks=1 threads=nThreads compute_alpha_kernel(ŷ, length(y), T, nRepeats, ycu, z′, alphas, blank)
   return (loss=-1 * logsumexp(alphas[end-1:end]), alpha=alphas, z′=z′, yhat=ŷ, nRepeats=nRepeats)
