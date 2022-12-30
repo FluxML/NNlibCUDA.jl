@@ -17,6 +17,8 @@
     gputest(src -> NNlib.gather(src, index), src, checkgrad=true)
     @test NNlib.gather!(CUDA.zeros(T, size(index)...), src, index) == output
     @test_throws ArgumentError NNlib.gather!(zeros(T, 3, 5), src, index)
+    index[1,:] .= 6
+    @test_throws BoundsError NNlib.gather(src, index)
     
     ## 1d src, 2d index of tuples -> 2d output
     src = CT([3, 4, 5, 6, 7])
@@ -89,4 +91,14 @@
     @test y isa CuArray{Float32,3}
     @test size(y) == (size(src)[1:Nsrc-M]..., size(index)...) 
     gputest(src -> NNlib.gather(src, index), src, checkgrad=true)
+
+    ## empty 2d src, 2d index of ints -> 3d output
+    src = CT(zeros(Int, 0, 3))
+    index = cu([1 2 3;
+                2 2 1;
+                3 1 3])
+    
+    y = NNlib.gather(src, index)
+    @test y isa CuArray{Float32,3}
+    @test size(y) == (0, size(index)...)
 end

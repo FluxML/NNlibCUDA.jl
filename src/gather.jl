@@ -49,13 +49,36 @@ function gather_kernel!(dst, src, idx::CUDA.CuDeviceArray{<:CartesianIndex}, max
     return nothing
 end
 
+struct BoundInfo{T,D}
+    A::T
+    dims::D
+end
+
+Adapt.adapt_structure(to, x::BoundInfo) = BoundInfo(adapt(to, parent(x.A)), x.dims)
+
+(b::BoundInfo)(i) = checkbounds(Bool, b.A, ntuple(x -> Colon(), b.dims)..., i...)
+(b::BoundInfo)(i::CartesianIndex) = checkbounds(Bool, b.A, ntuple(x -> Colon(), b.dims)..., i)
+
 function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
+    # check dims
     dims = gather_check_dims(src, dst, idx)
     dims_size = size(src)[1:dims]
     max_dims_idx = prod(dims_size)
     max_idx = max_dims_idx * length(idx)
-    args = dst, src, idx, max_idx, max_dims_idx, dims_size
 
+    # check bounds
+    in_bnd = mapreduce(BoundInfo(src, Val(dims)), &, idx)
+    if !in_bnd
+        j = findfirst(!, map(BoundInfo(src, Val(dims)), idx))
+        k = CUDA.@allowscalar idx[j]
+        throw(BoundsError(src, k))
+    end
+
+    # empty array input
+    isempty(src) && return dst
+
+    # cuda kernel
+    args = dst, src, idx, max_idx, max_dims_idx, dims_size
     kernel = @cuda launch=false gather_kernel!(args...)
     config = launch_configuration(kernel.fun; max_threads=256)
     threads = min(max_idx, config.threads)

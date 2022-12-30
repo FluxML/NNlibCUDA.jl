@@ -1,7 +1,7 @@
 module NNlibCUDA
 
 using NNlib
-using CUDA
+using CUDA, Adapt
 using Random, Statistics
 
 const IntOrIntTuple = Union{Integer, NTuple{N,<:Integer} where N}
