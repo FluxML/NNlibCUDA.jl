@@ -1,8 +1,8 @@
 NNlib._rng_from_array(::CuArray) = CUDA.default_rng()
 
-NNlib._rng_compat_array(::CUDA.RNG, ::CuArray) = nothing
-NNlib._rng_compat_array(rng::AbstractRNG, ::CuArray) = throw(ArgumentError(
-    "cannot use RNG::$(typeof(rng)) with array::CuArray"))
+NNlib._rng_compat_array(rng::CUDA.RNG, A::CuArray) = nothing
+NNlib._rng_compat_array(rng::AbstractRNG, A::CuArray) = throw(ArgumentError(
+    "cannot use rng::$(typeof(rng)) with array::CuArray, only CUDA's own RNG type works"))
 
 function divide_kernel!(xs, ys, max_idx)
     index = threadIdx().x + (blockIdx().x - 1) * blockDim().x
