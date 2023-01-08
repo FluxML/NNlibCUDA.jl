@@ -9,6 +9,7 @@ const IntOrIntTuple = Union{Integer, NTuple{N,<:Integer} where N}
 include("upsample.jl")
 include("sampling.jl")
 include("activations.jl")
+include("softmax.jl")
 include("batchedadjtrans.jl")
 include("batchedmul.jl")
 include("ctc.jl")
