@@ -2,6 +2,15 @@ using cuDNN: cudnnNormalizationForward!, cudnnNormalizationBackward,
              CUDNN_NORM_PER_CHANNEL, CUDNN_TENSOR_NCHW
 
 
+mutable struct BNCache
+    mean
+    ivar
+end
+
+BNCache() = BNCache(nothing, nothing)
+
+@inline _wsize(x::AbstractArray{<:Any,N}) where N = ntuple(i -> i == N-1 ? size(x, N-1) : 1, N)
+
 function batchnorm(g::DenseCuArray{T}, b::DenseCuArray{T}, x::Union{DenseCuArray{T,4},DenseCuArray{T,5}},
     running_mean, running_var, momentum; kws...) where T<:CUDNNFloat
     batchnorm!(similar(x), g, b, x, running_mean, running_var, momentum; kws...)
@@ -16,22 +25,45 @@ function batchnorm!(y::DenseCuArray{T}, scale::DenseCuArray{T}, bias::DenseCuArr
         affine = true,
         track_stats = true,
         
-        savedMean = nothing,
-        savedInvVariance = nothing,
         workspace = nothing,
         reserveSpace = nothing,
         ) where T
 
-    # dims = _wsize(x)
+    dims = _wsize(x)
     mode = CUDNN_NORM_PER_CHANNEL
     format = CUDNN_TENSOR_NCHW
+
+
+    if running_mean === nothing || running_var === nothing
+        running_mean !== running_var && throw(ArgumentError("both or neither of running_mean and running_var must be nothing"))
+        if track_stats || !training
+            running_mean = fill!(similar(x, dims), 0)
+            running_var = fill!(similar(x, dims), 1)
+        end
+    end
 
     # default training  => momentum > 0, use_estimates=false, gradients calculated
     # default inference => momentum = 0, use_estimates=true,  gradients not calculated
 
-    kws = (; mode, format, alpha, beta, epsilon=eps, savedMean, savedInvVariance, workspace, reserveSpace)
+    kws = (; mode, format, alpha, beta, epsilon=eps, workspace, reserveSpace)
+    if training && cache !== nothing
+        savedMean = fill!(similar(x, dims), 0)
+        savedInvVariance = fill!(similar(x, dims), 1)
+    else
+        savedMean = nothing
+        savedInvVariance = nothing
+    end
+
     cudnnNormalizationForward!(y, x, running_mean, running_var, bias, scale; 
-                                training, exponentialAverageFactor=momentum, kws...)
+                            training, exponentialAverageFactor=momentum, 
+                            savedMean, savedInvVariance,
+                            kws...)
+
+    if training && cache !== nothing
+        cache.mean = savedMean
+        cache.ivar = savedInvVariance
+    end
+
     return y
 end
     # if training

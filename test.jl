@@ -7,7 +7,11 @@ x = randn(Float32, 2, 2, 3, 5) |> cu
 affine_sz = _wsize(x)
 g = fill!(similar(x, affine_sz), 1)
 b = fill!(similar(x, affine_sz), 0)
-running_var = fill!(similar(x, affine_sz), 1)
 running_mean = fill!(similar(x, affine_sz), 0)
+running_var = fill!(similar(x, affine_sz), 1)
+# running_mean = CUDA.CU_NULL
+# running_var = CUDA.CU_NULL
+# running_mean = nothing
+# running_var = nothing
 
-NNlibCUDA.batchnorm(g, b, x, running_mean, running_var, 0.1)
+y = NNlibCUDA.batchnorm(g, b, x, running_mean, running_var, 0., training=true)
