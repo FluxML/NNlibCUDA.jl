@@ -63,3 +63,17 @@ function NNlib.gather!(dst::AnyCuArray, src::AnyCuArray, idx::AnyCuArray)
     kernel(args...; threads=threads, blocks=blocks)
     return dst
 end
+
+function NNlib.gather(src::AnyCuArray{Tsrc, Nsrc}, 
+                      idx::AnyCuArray{Tidx, Nidx}) where 
+            {Tsrc, Nsrc, Nidx, Tidx}
+    M = NNlib.typelength(Tidx) 
+    dstsize = (size(src)[1:Nsrc-M]..., size(idx)...)
+    dst = similar(src, Tsrc, dstsize)
+    return NNlib.gather!(dst, src, idx)
+end
+
+function NNlib.gather(src::AnyCuArray, idx::AbstractArray)
+    err_msg = "src and idx both must be on GPU, but received $(typeof(src)) and $(typeof(idx)), respectively."
+    throw(ArgumentError(err_msg))
+end
